@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>평가등급 T/O 배분 시뮬레이터</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background: #f0f2f5; color: #222; font-size: 14px; }
+
+header {
+  background: linear-gradient(135deg, #1a3c6e 0%, #1565c0 100%);
+  color: #fff; padding: 18px 28px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+header h1 { font-size: 1.35em; font-weight: 700; letter-spacing: -0.3px; }
+header p { font-size: 0.82em; opacity: 0.82; margin-top: 5px; }
+
+main { max-width: 1440px; margin: 0 auto; padding: 20px 16px; }
+
+.card {
+  background: #fff; border-radius: 10px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.09);
+  margin-bottom: 16px; overflow: hidden;
+}
+.card-header {
+  background: #f4f6f9; border-bottom: 1px solid #e0e4ec;
+  padding: 11px 18px; font-weight: 700; font-size: 0.93em;
+  color: #2c3e6b; display: flex; align-items: center; gap: 8px;
+}
+.card-body { padding: 18px; }
+
+/* 재무실적 버튼 */
+.fin-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.fin-btn {
+  padding: 9px 28px; border: 2px solid #ccc; border-radius: 8px;
+  background: #fff; cursor: pointer; font-size: 1em; font-weight: 700;
+  transition: all 0.18s; min-width: 110px; text-align: center;
+}
+.fin-btn:hover { filter: brightness(0.97); }
+.fin-btn.fp-S  { background: #1565c0; color: #fff; border-color: #1565c0; }
+.fin-btn.fp-A  { background: #2e7d32; color: #fff; border-color: #2e7d32; }
+.fin-btn.fp-B  { background: #e65100; color: #fff; border-color: #e65100; }
+.fin-btn.fp-off { background: #fff; color: #777; border-color: #ccc; }
+
+/* 기본 비율 칩 */
+.rates-wrap { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 14px; }
+.rates-group-label { font-size: 0.8em; font-weight: 700; color: #666; margin-bottom: 6px; }
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  padding: 4px 11px; border-radius: 20px; font-size: 0.8em; font-weight: 700;
+  border: 1px solid transparent;
+}
+
+/* 모드 탭 */
+.mode-tabs { display: flex; border-bottom: 2px solid #e4e8f0; margin-bottom: 16px; }
+.mode-tab {
+  padding: 9px 22px; cursor: pointer; border: none; background: none;
+  font-size: 0.9em; color: #888; border-bottom: 3px solid transparent;
+  margin-bottom: -2px; font-weight: 600; transition: all 0.18s;
+}
+.mode-tab.active { color: #1a3c6e; border-bottom-color: #1a3c6e; }
+
+/* 비율 입력 */
+.ratio-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 10px; }
+.ratio-group { display: flex; align-items: center; gap: 7px; }
+.ratio-group label { font-weight: 700; font-size: 0.9em; }
+.ratio-input {
+  width: 62px; padding: 6px 8px; border: 1.5px solid #ccc; border-radius: 6px;
+  text-align: center; font-size: 0.92em; font-weight: 700;
+}
+.ratio-input:focus { outline: none; border-color: #1565c0; }
+.ratio-b-box {
+  padding: 6px 12px; background: #f5f5f5; border: 1.5px solid #ddd;
+  border-radius: 6px; font-weight: 700; font-size: 0.9em; color: #888;
+}
+.hint { font-size: 0.79em; color: #aaa; }
+
+/* 강도 선택 */
+.strength-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.strength-group label { font-size: 0.88em; font-weight: 700; color: #555; }
+.str-btn {
+  padding: 5px 14px; border: 1.5px solid #ccc; border-radius: 6px;
+  background: #fff; cursor: pointer; font-size: 0.85em; font-weight: 600;
+  transition: all 0.15s;
+}
+.str-btn.active { background: #1a3c6e; color: #fff; border-color: #1a3c6e; }
+
+/* 조직 테이블 */
+.org-table { width: 100%; border-collapse: collapse; font-size: 0.87em; }
+.org-table th {
+  background: #eef1f8; text-align: center; padding: 8px 10px;
+  font-weight: 700; border: 1px solid #dde2ee; white-space: nowrap;
+}
+.org-table td { padding: 6px 10px; border: 1px solid #e4e8f0; text-align: center; vertical-align: middle; }
+.org-table tbody tr:nth-child(even) td { background: #fafbfd; }
+.org-table tbody tr:hover td { background: #f0f4ff; }
+td.dept-name { text-align: left; font-weight: 600; padding-left: 12px; }
+
+/* 인원 입력 */
+.head-input {
+  width: 54px; padding: 5px 6px; border: 1.5px solid #ccc; border-radius: 5px;
+  text-align: center; font-size: 0.88em; font-weight: 700; transition: border-color 0.15s;
+}
+.head-input:focus { outline: none; border-color: #1565c0; }
+.head-input.abs-input { border-color: #ce93d8; background: #fdf6ff; color: #9c27b0; }
+.abs-badge { font-size:0.71em; color:#9c27b0; font-weight:700; margin-left:2px; vertical-align:middle; }
+
+.perf-sel {
+  padding: 5px 10px; border: 1.5px solid #ccc; border-radius: 6px;
+  font-size: 0.88em; font-weight: 700; cursor: pointer; width: 90px;
+  transition: all 0.15s;
+}
+.perf-sel:focus { outline: none; }
+.perf-sel.g-S { background: #e3f2fd; color: #1565c0; border-color: #90caf9; }
+.perf-sel.g-A { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+.perf-sel.g-B { background: #fff3e0; color: #bf360c; border-color: #ffcc80; }
+
+/* 버튼 */
+.btn {
+  padding: 8px 20px; border: none; border-radius: 7px;
+  cursor: pointer; font-size: 0.9em; font-weight: 700;
+  transition: all 0.18s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:active { transform: scale(0.97); }
+.btn-random { background: #ff6d00; color: #fff; }
+.btn-random:hover { background: #e65100; }
+.btn-run {
+  background: linear-gradient(135deg, #1a3c6e, #1565c0);
+  color: #fff; font-size: 1.05em; padding: 13px 40px;
+  width: 100%; justify-content: center; border-radius: 9px;
+  box-shadow: 0 3px 10px rgba(21,101,192,0.35);
+}
+.btn-run:hover { box-shadow: 0 5px 16px rgba(21,101,192,0.45); filter: brightness(1.08); }
+.btn-export { background: #2e7d32; color: #fff; font-size: 1.05em; padding: 12px 36px; }
+.btn-export:hover { background: #1b5e20; }
+
+/* 결과 테이블 */
+.result-table { width: 100%; border-collapse: collapse; font-size: 0.84em; }
+.result-table th {
+  background: #1a3c6e; color: #fff; padding: 8px 9px;
+  text-align: center; border: 1px solid #15306e; white-space: nowrap;
+}
+.result-table td { padding: 6px 9px; border: 1px solid #e0e4ec; text-align: center; }
+.result-table tbody tr:nth-child(even) td { background: #f8f9fc; }
+.result-table tbody tr:hover td { background: #eef2ff; }
+.result-table tfoot td {
+  background: #e8eaf6; font-weight: 700;
+  border-top: 2px solid #3f51b5; font-size: 0.88em;
+}
+.pct-small { font-size: 0.78em; color: #999; margin-left: 2px; }
+.abs-cell { color: #bbb; font-size: 0.88em; }
+
+/* 차등폭 테이블 */
+.diff-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+.diff-table th {
+  background: #eeeeee; padding: 7px 10px; border: 1px solid #ddd;
+  font-weight: 700; text-align: center; font-size: 0.87em;
+}
+.diff-table td { padding: 6px 10px; border: 1px solid #e0e0e0; text-align: center; }
+.diff-table tbody tr:nth-child(even) td { background: #fafafa; }
+.pos { color: #1565c0; font-weight: 700; }
+.neg { color: #c62828; font-weight: 700; }
+.neutral { color: #777; }
+
+/* 가중치 안내 */
+.weight-info {
+  margin-top: 12px; padding: 10px 14px; background: #f0f4ff;
+  border-left: 3px solid #1565c0; border-radius: 0 6px 6px 0;
+  font-size: 0.82em; color: #444; line-height: 1.6;
+}
+
+/* 요약 */
+.summary-chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.s-chip {
+  padding: 8px 16px; border-radius: 8px; background: #f5f5f5;
+  font-size: 0.88em; min-width: 110px; text-align: center;
+}
+.s-chip strong { display: block; font-size: 1.2em; margin-top: 2px; }
+
+/* 그리드 */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+.chart-wrap { position: relative; height: 260px; }
+.col-label { font-weight: 700; font-size: 0.9em; text-align: center; margin-bottom: 8px; color: #444; }
+
+/* 수렴 안내 박스 */
+.converge-box {
+  background: #f3f8ff; border: 1px solid #90caf9; border-radius: 8px;
+  padding: 12px 16px; font-size: 0.83em; color: #1a3c6e; line-height: 1.65;
+}
+.converge-box strong { color: #1565c0; }
+
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.run-wrap { padding: 4px 0 8px; }
+
+.badge {
+  display: inline-block; padding: 2px 9px; border-radius: 12px;
+  font-size: 0.82em; font-weight: 700;
+}
+.badge-S { background: #e3f2fd; color: #1565c0; }
+.badge-A { background: #e8f5e9; color: #2e7d32; }
+.badge-B { background: #fff3e0; color: #bf360c; }
+
+.target-row td { background: #fff8e1 !important; font-size: 0.83em; color: #555; }
+
+/* 강도별 비교 테이블 */
+.cmp-table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+.cmp-table th { padding: 7px 9px; border: 1px solid #dde2ee; text-align: center; font-weight: 700; white-space: nowrap; }
+.cmp-table td { padding: 5px 8px; border: 1px solid #e4e8f0; text-align: center; vertical-align: middle; }
+.cmp-table tbody tr:nth-child(even) td { background: #fafbfd; }
+.cmp-table tbody tr:hover td { background: #f0f4ff; }
+.cmp-th-low  { background: #e8f5e9 !important; color: #2e7d32; }
+.cmp-th-mid  { background: #e3f2fd !important; color: #1565c0; }
+.cmp-th-high { background: #fce4ec !important; color: #b71c1c; }
+.cmp-td-low  { background: #f4fbf5; }
+.cmp-td-mid  { background: #f0f7fd; }
+.cmp-td-high { background: #fff5f7; }
+.cmp-active-col td.cmp-td-low,
+.cmp-active-col td.cmp-td-mid,
+.cmp-active-col td.cmp-td-high { font-weight: 700; }
+.cmp-cur { box-shadow: inset 0 0 0 2px currentColor; }
+.cmp-legend { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; font-size:0.83em; }
+.cmp-legend span { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-weight:700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 평가등급 T/O 배분 시뮬레이터</h1>
+  <p>재무실적 × 조직성과 조합으로 본부별 평가등급 T/O를 자동 산출 · 전사 평균 수렴 보장 · 인원수 가중 차등폭 자동 계산</p>
+</header>
+
+<main>
+
+<!-- ① 재무실적 -->
+<div class="card">
+  <div class="card-header">① 재무실적 선택</div>
+  <div class="card-body">
+    <div class="fin-btns">
+      <button class="fin-btn fp-off" id="fbtn-S" onclick="setFP('S')">S 등급</button>
+      <button class="fin-btn fp-A"   id="fbtn-A" onclick="setFP('A')">A 등급</button>
+      <button class="fin-btn fp-off" id="fbtn-B" onclick="setFP('B')">B이하 등급</button>
+    </div>
+    <div id="base-rates-area" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<!-- ② 조직성과 배분 -->
+<div class="card">
+  <div class="card-header">② 조직성과 배분 설정</div>
+  <div class="card-body">
+
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-ratio"  onclick="setMode('ratio')">📊 비율 입력 + 랜덤 배분</button>
+      <button class="mode-tab"        id="tab-manual" onclick="setMode('manual')">✏️ 수기 직접 입력</button>
+    </div>
+
+    <!-- 비율 패널 -->
+    <div id="ratio-panel">
+      <div class="ratio-row">
+        <div class="ratio-group">
+          <label style="color:#1565c0">S 등급:</label>
+          <input type="number" class="ratio-input" id="ri-s" value="15" min="0" max="100" oninput="syncRatioB()">
+          <span style="color:#888">%</span>
+        </div>
+        <div class="ratio-group">
+          <label style="color:#2e7d32">A 등급:</label>
+          <input type="number" class="ratio-input" id="ri-a" value="35" min="0" max="100" oninput="syncRatioB()">
+          <span style="color:#888">%</span>
+        </div>
+        <div class="ratio-group">
+          <label style="color:#bf360c">B이하:</label>
+          <span class="ratio-b-box" id="ri-b-txt">50%</span>
+          <span class="hint">(자동)</span>
+        </div>
+        <button class="btn btn-random" onclick="doRandom()">🎲 랜덤 배분</button>
+      </div>
+      <p class="hint" style="margin-bottom:12px;">* 25개 본부 수 기준 비율로 배분됩니다. 배분 후 드롭다운에서 수기 수정도 가능합니다.</p>
+    </div>
+
+    <!-- 차등폭 강도 -->
+    <div class="strength-group" style="margin-bottom:6px;">
+      <label>차등폭 강도:</label>
+      <button class="str-btn" id="st-low"  onclick="setStrength('low')">약</button>
+      <button class="str-btn active" id="st-mid" onclick="setStrength('mid')">보통</button>
+      <button class="str-btn" id="st-high" onclick="setStrength('high')">강</button>
+      <span class="hint">· 조직성과 S/B 간 등급 차등 폭을 조절합니다</span>
+    </div>
+
+    <!-- 차등폭 배율 조정 -->
+    <div style="margin-bottom:14px;padding:12px 16px;background:#f8f9fc;border:1px solid #e0e4ec;border-radius:8px;">
+      <div style="font-size:0.83em;font-weight:700;color:#444;margin-bottom:10px;">
+        🔧 차등폭 수준 조정 <span style="font-weight:400;color:#aaa">(보통=1.0 기준 배율 · 높을수록 S/B 간 차이 커짐)</span>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span style="font-weight:700;color:#2e7d32;font-size:0.88em;">약</span>
+          <input type="number" id="mult-low"  value="0.30" step="0.05" min="0.05" max="10"
+            style="width:62px;padding:5px 7px;border:1.5px solid #ccc;border-radius:6px;text-align:center;font-size:0.9em;font-weight:700;"
+            oninput="updateStrMult()"> <span style="color:#888;font-size:0.85em;">×</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span style="font-weight:700;color:#1565c0;font-size:0.88em;">보통</span>
+          <input type="number" id="mult-mid"  value="1.00" step="0.05" min="0.05" max="10"
+            style="width:62px;padding:5px 7px;border:1.5px solid #ccc;border-radius:6px;text-align:center;font-size:0.9em;font-weight:700;"
+            oninput="updateStrMult()"> <span style="color:#888;font-size:0.85em;">×</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span style="font-weight:700;color:#b71c1c;font-size:0.88em;">강</span>
+          <input type="number" id="mult-high" value="2.50" step="0.05" min="0.05" max="10"
+            style="width:62px;padding:5px 7px;border:1.5px solid #ccc;border-radius:6px;text-align:center;font-size:0.9em;font-weight:700;"
+            oninput="updateStrMult()"> <span style="color:#888;font-size:0.85em;">×</span>
+        </div>
+        <button class="btn" style="background:#90a4ae;color:#fff;padding:5px 12px;font-size:0.82em;" onclick="resetStrMult()">↺ 기본값</button>
+      </div>
+      <div id="str-preview" style="margin-top:8px;font-size:0.8em;color:#666;line-height:1.7;"></div>
+    </div>
+
+    <!-- 조직 테이블 -->
+    <div class="table-scroll">
+      <table class="org-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>본부명</th>
+            <th>팀장 인원 <span style="font-size:0.75em;font-weight:400;color:#888">✏️수정가능</span></th>
+            <th>팀원 인원 <span style="font-size:0.75em;font-weight:400;color:#888">✏️수정가능</span></th>
+            <th>조직성과</th>
+          </tr>
+        </thead>
+        <tbody id="org-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:0.8em;color:#888">※ 팀장·팀원 인원을 클릭해서 직접 수정할 수 있습니다. 1명 입력 시 자동으로 절대평가 처리됩니다.</span>
+      <button class="btn" style="background:#78909c;color:#fff;padding:5px 14px;font-size:0.82em" onclick="resetHeadcounts()">↺ 인원 초기화</button>
+    </div>
+  </div>
+</div>
+
+<!-- 실행 -->
+<div class="run-wrap">
+  <button class="btn btn-run" onclick="runSim()">▶ 시뮬레이션 실행</button>
+</div>
+
+<!-- 결과 영역 -->
+<div id="result-area" style="display:none;">
+
+  <!-- 수렴 알고리즘 설명 -->
+  <div class="card">
+    <div class="card-header">📐 조직성과별 차등 비율 — 자동 산출 결과</div>
+    <div class="card-body">
+      <div class="converge-box" id="converge-desc" style="margin-bottom:14px;"></div>
+      <div class="two-col">
+        <div>
+          <div class="col-label">팀장급</div>
+          <div id="diff-mgr"></div>
+        </div>
+        <div>
+          <div class="col-label">팀원</div>
+          <div id="diff-mem"></div>
+        </div>
+      </div>
+      <div class="weight-info" id="weight-info"></div>
+    </div>
+  </div>
+
+  <!-- 전사 현황 -->
+  <div class="card">
+    <div class="card-header">📋 전사 현황</div>
+    <div class="card-body">
+      <div class="summary-chips" id="summary-chips"></div>
+    </div>
+  </div>
+
+  <!-- 팀장급 결과 -->
+  <div class="card">
+    <div class="card-header">👔 팀장급 T/O 배분 결과</div>
+    <div class="card-body">
+      <div class="table-scroll">
+        <table class="result-table" id="tbl-mgr"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 팀원 결과 -->
+  <div class="card">
+    <div class="card-header">👤 팀원 T/O 배분 결과</div>
+    <div class="card-body">
+      <div class="table-scroll">
+        <table class="result-table" id="tbl-mem"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 강도별 비교 -->
+  <div class="card">
+    <div class="card-header">⚖️ 차등폭 강도별 T/O 배분 비교 <span style="font-size:0.82em;font-weight:400;color:#888">— 약 / 보통 / 강 동시 비교</span></div>
+    <div class="card-body">
+      <div id="compare-mgr"></div>
+      <div id="compare-mem" style="margin-top:24px;"></div>
+    </div>
+  </div>
+
+  <!-- 차트 -->
+  <div class="card">
+    <div class="card-header">📈 전사 집계 vs 재무실적 목표 비율 비교</div>
+    <div class="card-body">
+      <div class="two-col">
+        <div>
+          <div class="col-label">팀장급</div>
+          <div class="chart-wrap" id="chart-mgr"></div>
+        </div>
+        <div>
+          <div class="col-label">팀원</div>
+          <div class="chart-wrap" id="chart-mem"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 내보내기 -->
+  <div style="text-align:center;padding:8px 0 8px;">
+    <button class="btn btn-export" onclick="doExport()">📥 HR용 Excel 내보내기</button>
+  </div>
+
+  <!-- 본부 배포 파일 -->
+  <div class="card">
+    <div class="card-header">📦 본부 배포 파일 생성 <span style="font-size:0.82em;font-weight:400;color:#aaa">— 본부별 개별 Excel (ZIP)</span></div>
+    <div class="card-body">
+      <p style="font-size:0.84em;color:#555;margin-bottom:16px;">
+        시뮬레이션 결과를 기반으로 <strong>본부별 개별 Excel 파일</strong>을 생성합니다.
+        각 파일에는 T/O 배분 결과와 본부장이 직접 등급 교환 조정을 입력할 수 있는 양식이 포함됩니다.
+      </p>
+
+      <!-- 교환 규칙 설정 -->
+      <div style="background:#f4f6f9;border:1px solid #e0e4ec;border-radius:8px;padding:14px 16px;margin-bottom:16px;">
+        <div style="font-weight:700;font-size:0.88em;color:#1a3c6e;margin-bottom:12px;">🔄 등급 교환 규칙 설정
+          <span style="font-weight:400;color:#aaa;font-size:0.9em;">— 유형별 활성화·최대 횟수 설정 후 파일 생성 시 반영됩니다</span>
+        </div>
+
+        <div class="two-col" style="margin-bottom:12px;">
+          <!-- 팀장급 -->
+          <div style="background:#fff;border:1px solid #dde2ee;border-radius:7px;padding:10px;">
+            <div style="font-weight:700;font-size:0.85em;color:#444;margin-bottom:8px;">👔 팀장급 (상대평가 1~4등급)</div>
+            <div class="table-scroll">
+              <table class="org-table" style="font-size:0.81em;">
+                <thead><tr>
+                  <th style="width:32px;">활성</th><th>교환 유형</th><th>1회 효과</th><th style="width:68px;">최대</th>
+                </tr></thead>
+                <tbody id="ex-tbody-mgr"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- 팀원 -->
+          <div style="background:#fff;border:1px solid #dde2ee;border-radius:7px;padding:10px;">
+            <div style="font-weight:700;font-size:0.85em;color:#444;margin-bottom:8px;">👤 팀원 (상대평가 1~5등급)</div>
+            <div class="table-scroll">
+              <table class="org-table" style="font-size:0.81em;">
+                <thead><tr>
+                  <th style="width:32px;">활성</th><th>교환 유형</th><th>1회 효과</th><th style="width:68px;">최대</th>
+                </tr></thead>
+                <tbody id="ex-tbody-mem"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 본부별 개별 설정 -->
+        <div style="padding-top:10px;border-top:1px solid #e0e4ec;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.84em;font-weight:700;color:#444;">
+            <input type="checkbox" id="use-dept-override" onchange="toggleDeptOverrides()" style="width:15px;height:15px;cursor:pointer;">
+            본부별 최대 횟수 개별 설정
+            <span style="font-weight:400;color:#aaa;">— 본부마다 허용 횟수를 다르게 지정할 때 사용</span>
+          </label>
+          <div id="dept-override-area" style="display:none;margin-top:10px;">
+            <div id="dept-override-table"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 본부 선택 -->
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-weight:700;font-size:0.88em;color:#1a3c6e;">📋 배포할 본부 선택</span>
+          <span style="display:flex;gap:6px;">
+            <button class="btn" style="padding:4px 12px;font-size:0.8em;background:#1a3c6e;color:#fff;" onclick="selectAllDepts(true)">전체 선택</button>
+            <button class="btn" style="padding:4px 12px;font-size:0.8em;background:#78909c;color:#fff;" onclick="selectAllDepts(false)">전체 해제</button>
+          </span>
+        </div>
+        <div id="dept-checklist" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px;max-height:200px;overflow-y:auto;padding:10px;background:#f8f9fc;border:1px solid #e0e4ec;border-radius:7px;"></div>
+        <div style="margin-top:6px;font-size:0.8em;color:#888;">선택: <strong id="dept-sel-count">0</strong>개 본부</div>
+      </div>
+
+      <div style="text-align:center;">
+        <button id="btn-dept-export" class="btn" onclick="exportDepts()"
+          style="background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;font-size:1.05em;padding:13px 40px;width:100%;justify-content:center;border-radius:9px;box-shadow:0 3px 10px rgba(46,125,50,0.35);">
+          📦 선택 본부 Excel 생성 (ZIP 다운로드)
+        </button>
+        <p style="font-size:0.78em;color:#aaa;margin-top:8px;">※ 시뮬레이터_실행.bat 실행 상태에서만 작동합니다</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding-bottom:20px;"></div>
+
+</div><!-- /result-area -->
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// 1. 기초 데이터
+// ═══════════════════════════════════════════════════════════
+
+const DEPTS = [
+  {name:'BX1본부',          mgr:3,  mem:24},
+  {name:'BX2본부',          mgr:4,  mem:13},
+  {name:'BX3본부',          mgr:3,  mem:22},
+  {name:'BX4본부',          mgr:4,  mem:23},
+  {name:'BX5본부',          mgr:3,  mem:15},
+  {name:'국내BX부문 직속',  mgr:2,  mem:19},
+  {name:'CX1본부',          mgr:8,  mem:77},
+  {name:'CX2본부',          mgr:7,  mem:55},
+  {name:'미디어본부',       mgr:7,  mem:52},
+  {name:'DX본부',           mgr:9,  mem:108},
+  {name:'전략솔루션본부',   mgr:3,  mem:22},
+  {name:'글로벌1본부',      mgr:5,  mem:39},
+  {name:'글로벌2본부',      mgr:3,  mem:17},
+  {name:'글로벌3본부',      mgr:3,  mem:18},
+  {name:'글비부문 직속',    mgr:1,  mem:7},
+  {name:'이일호ECD Pool',   mgr:3,  mem:15},
+  {name:'배금별ECD Pool',   mgr:2,  mem:16},
+  {name:'홍성혁ECD Pool',   mgr:2,  mem:10},
+  {name:'방세종ECD Pool',   mgr:2,  mem:10},
+  {name:'CR부문 직속',      mgr:7,  mem:33},
+  {name:'이노21본부',       mgr:7,  mem:21},
+  {name:'경영전략본부',     mgr:3,  mem:15},
+  {name:'재경본부',         mgr:4,  mem:41},
+  {name:'경영지원본부',     mgr:5,  mem:44},
+  {name:'대표이사 직속',    mgr:1,  mem:7},
+];
+
+// 원본 인원 백업 (초기화용)
+const DEPTS_ORIG = DEPTS.map(d=>({...d}));
+
+// 재무실적별 기본 비율 (raw %, 합산 후 정규화)
+// 팀장: 등급 1~4 (5·6등급 = 절대), 팀원: 등급 1~5 (6등급 = 절대)
+const BASE_RAW = {
+  S: { mgr:[20,35,20,25],    mem:[15,30,25,25,5]  },
+  A: { mgr:[15,30,25,30],    mem:[10,25,25,30,10] },
+  B: { mgr:[10,25,30,35],    mem:[5, 20,30,35,10] }
+};
+
+// 재무실적별 차등폭 기본 강도 (보통 기준)
+const STRENGTH_BASE = { S:0.28, A:0.20, B:0.10 };
+
+// 차등폭 강도 배율 (ST.strengthMult 로 이동 — UI에서 조정 가능)
+
+// 등급 색상
+const GRADE_COLORS = ['#1565c0','#42a5f5','#66bb6a','#ffa726','#ef5350','#bdbdbd'];
+
+// ═══════════════════════════════════════════════════════════
+// 2. 상태
+// ═══════════════════════════════════════════════════════════
+const ST = {
+  fp: 'A',
+  mode: 'ratio',
+  strength: 'mid',
+  strengthMult: { low: 0.30, mid: 1.0, high: 2.50 },
+  orgPerf: Object.fromEntries(DEPTS.map(d => [d.name, 'A'])),
+  sim: null
+};
+let _charts = {};
+
+// ═══════════════════════════════════════════════════════════
+// 3. 초기화
+// ═══════════════════════════════════════════════════════════
+function init() {
+  renderOrgTable();
+  setFP('A');
+  syncRatioB();
+  updateStrMult();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 4. 재무실적
+// ═══════════════════════════════════════════════════════════
+function setFP(fp) {
+  ST.fp = fp;
+  ['S','A','B'].forEach(f => {
+    const btn = document.getElementById('fbtn-' + f);
+    btn.className = 'fin-btn ' + (f === fp ? 'fp-'+f : 'fp-off');
+  });
+  renderBaseRates();
+}
+
+function norm(arr) {
+  const s = arr.reduce((a,b)=>a+b,0);
+  return arr.map(r => r/s);
+}
+
+function renderBaseRates() {
+  const fp = ST.fp;
+  const mr = norm(BASE_RAW[fp].mgr);
+  const er = norm(BASE_RAW[fp].mem);
+  const mLabels = ['1등급','2등급','3등급','4등급'];
+  const eLabels = ['1등급','2등급','3등급','4등급','5등급'];
+
+  const chips = (arr, labels) => labels.map((l,i) =>
+    `<span class="chip" style="background:${GRADE_COLORS[i]}18;color:${GRADE_COLORS[i]};border-color:${GRADE_COLORS[i]}44">${l}: ${(arr[i]*100).toFixed(1)}%</span>`
+  ).join('') + '<span class="chip" style="background:#f5f5f5;color:#aaa;border-color:#ddd">절대등급: -</span>';
+
+  document.getElementById('base-rates-area').innerHTML = `
+    <div class="rates-wrap">
+      <div><div class="rates-group-label">팀장급 기본 비율 (${fp}등급)</div><div class="chip-row">${chips(mr,mLabels)}</div></div>
+      <div><div class="rates-group-label">팀원 기본 비율 (${fp}등급)</div><div class="chip-row">${chips(er,eLabels)}</div></div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// 5. 모드 / 비율 / 강도
+// ═══════════════════════════════════════════════════════════
+function setMode(m) {
+  ST.mode = m;
+  document.getElementById('tab-ratio').className  = 'mode-tab' + (m==='ratio'  ? ' active' : '');
+  document.getElementById('tab-manual').className = 'mode-tab' + (m==='manual' ? ' active' : '');
+  document.getElementById('ratio-panel').style.display = m==='ratio' ? '' : 'none';
+}
+
+function syncRatioB() {
+  const s = +document.getElementById('ri-s').value || 0;
+  const a = +document.getElementById('ri-a').value || 0;
+  document.getElementById('ri-b-txt').textContent = Math.max(0, 100-s-a).toFixed(0) + '%';
+}
+
+function setStrength(lvl) {
+  ST.strength = lvl;
+  ['low','mid','high'].forEach(l => {
+    document.getElementById('st-'+l).className = 'str-btn' + (l===lvl ? ' active':'');
+  });
+  updateStrMult();
+}
+
+function updateStrMult() {
+  const low  = Math.max(0.05, parseFloat(document.getElementById('mult-low').value)  || 0.30);
+  const mid  = Math.max(0.05, parseFloat(document.getElementById('mult-mid').value)  || 1.00);
+  const high = Math.max(0.05, parseFloat(document.getElementById('mult-high').value) || 2.50);
+  ST.strengthMult = { low, mid, high };
+  updateStrPreview();
+}
+
+function resetStrMult() {
+  document.getElementById('mult-low').value  = '0.30';
+  document.getElementById('mult-mid').value  = '1.00';
+  document.getElementById('mult-high').value = '2.50';
+  updateStrMult();
+}
+
+function updateStrPreview() {
+  const fp = ST.fp;
+  const origStr = ST.strength;
+  // 조직성과 S/B 조직이 없으면 임시 샘플로 계산
+  const hasNonA = DEPTS.some(d => ST.orgPerf[d.name] !== 'A' && d.mgr > 1);
+  const samplePerf = hasNonA ? ST.orgPerf :
+    Object.fromEntries(DEPTS.map((d,i) => [d.name, i<8?'S':i<17?'A':'B']));
+
+  const lines = [];
+  ['low','mid','high'].forEach(str => {
+    ST.strength = str;
+    const adj = calcAdj(fp, samplePerf, DEPTS, 'mgr');
+    const d1 = ((adj.repS[0] - adj.repB[0]) * 100).toFixed(1);
+    const d2 = ((adj.repS[1] - adj.repB[1]) * 100).toFixed(1);
+    const lbl = {low:'약', mid:'보통', high:'강'}[str];
+    const col = {low:'#2e7d32', mid:'#1565c0', high:'#b71c1c'}[str];
+    lines.push(`<span style="color:${col};font-weight:700">${lbl}(×${ST.strengthMult[str].toFixed(2)})</span>: 팀장 1등급 S↔B 차이 <strong>${d1}%p</strong>, 2등급 <strong>${d2}%p</strong>`);
+  });
+  ST.strength = origStr;
+
+  const note = hasNonA ? '' : ' <span style="color:#bbb">(샘플 조직성과 기준)</span>';
+  document.getElementById('str-preview').innerHTML = lines.join(' &nbsp;|&nbsp; ') + note;
+}
+
+// ═══════════════════════════════════════════════════════════
+// 6. 랜덤 배분 (조직 수 기준)
+// ═══════════════════════════════════════════════════════════
+function doRandom() {
+  const s = +document.getElementById('ri-s').value || 0;
+  const a = +document.getElementById('ri-a').value || 0;
+  const b = Math.max(0, 100-s-a);
+  const n = DEPTS.length;
+
+  // 최대잉여법으로 조직 수 결정
+  const ideals = [n*s/100, n*a/100, n*b/100];
+  const floors = ideals.map(Math.floor);
+  let rem = n - floors.reduce((a,b)=>a+b,0);
+  const fracs = ideals.map((v,i) => ({i, f: v-floors[i]})).sort((a,b)=>b.f-a.f);
+  fracs.forEach(x => { if(rem-->0) floors[x.i]++; });
+  const [nS, nA, nB] = floors;
+
+  const pool = [...Array(nS).fill('S'), ...Array(nA).fill('A'), ...Array(Math.max(0,nB)).fill('B')];
+  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  DEPTS.forEach((d,i) => { ST.orgPerf[d.name] = pool[i] || 'B'; });
+  renderOrgTable();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 7. 조직 테이블 렌더링
+// ═══════════════════════════════════════════════════════════
+function renderOrgTable() {
+  const tbody = document.getElementById('org-tbody');
+  tbody.innerHTML = DEPTS.map((d,i) => {
+    const g = ST.orgPerf[d.name];
+    const mAbs = d.mgr===1, eAbs = d.mem===1;
+    return `<tr>
+      <td>${i+1}</td>
+      <td class="dept-name">${d.name}</td>
+      <td style="white-space:nowrap">
+        <input type="number" class="head-input${mAbs?' abs-input':''}"
+               value="${d.mgr}" min="0" max="999"
+               oninput="onHeadChange(${i},'mgr',this)">
+        <span class="abs-badge" style="display:${mAbs?'inline':'none'}">[절대]</span>
+      </td>
+      <td style="white-space:nowrap">
+        <input type="number" class="head-input${eAbs?' abs-input':''}"
+               value="${d.mem}" min="0" max="999"
+               oninput="onHeadChange(${i},'mem',this)">
+        <span class="abs-badge" style="display:${eAbs?'inline':'none'}">[절대]</span>
+      </td>
+      <td>
+        <select class="perf-sel g-${g}" id="sel-${i}"
+          onchange="onSelChange(${i},'${d.name}',this)">
+          <option value="S" ${g==='S'?'selected':''}>S</option>
+          <option value="A" ${g==='A'?'selected':''}>A</option>
+          <option value="B" ${g==='B'?'selected':''}>B이하</option>
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function onHeadChange(idx, role, input) {
+  const val = Math.max(0, parseInt(input.value)||0);
+  DEPTS[idx][role] = val;
+  const isAbs = val === 1;
+  input.className = 'head-input' + (isAbs ? ' abs-input' : '');
+  const badge = input.nextElementSibling;
+  if(badge) badge.style.display = isAbs ? 'inline' : 'none';
+}
+
+function onSelChange(idx, name, sel) {
+  ST.orgPerf[name] = sel.value;
+  sel.className = 'perf-sel g-' + sel.value;
+}
+
+function resetHeadcounts() {
+  DEPTS_ORIG.forEach((orig, i) => { DEPTS[i].mgr = orig.mgr; DEPTS[i].mem = orig.mem; });
+  renderOrgTable();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 8. 핵심 알고리즘: 차등폭 자동 산출
+// ═══════════════════════════════════════════════════════════
+/**
+ * 인원수 가중 차등폭 계산
+ *
+ * 조직성과 A = 재무실적 기본 비율 (기준점)
+ * 조건: w_S·Δ_S[k] + w_B·Δ_B[k] = 0  (전사 가중평균 = 목표비율)
+ * 해:   Δ_S[k] = (w_B / (w_S+w_B)) · spread[k]
+ *       Δ_B[k] = -(w_S / (w_S+w_B)) · spread[k]
+ *
+ * spread[k] = 상위등급(1,2)은 +, 하위등급(3~)은 -  (합계=0 유지)
+ * spread 크기 = 재무실적·강도 파라미터로 결정
+ */
+function calcAdj(fp, orgPerfMap, depts, roleKey) {
+  const rawRates = BASE_RAW[fp][roleKey];
+  const base = norm(rawRates);      // 정규화 기본 비율
+  const nG   = base.length;
+  const mult = ST.strengthMult[ST.strength];
+  const str  = STRENGTH_BASE[fp] * mult;
+
+  // 헤드카운트 가중 비중 (1명 조직은 절대평가 → 제외)
+  let totHead=0, hS=0, hA=0, hB=0;
+  let absCount = 0;
+  depts.forEach(d => {
+    const n = d[roleKey]; if(!n) return;
+    if(n === 1) { absCount++; return; }  // 절대평가 대상 → 상대평가 계산 제외
+    const g = orgPerfMap[d.name] || 'A';
+    totHead += n;
+    if(g==='S') hS+=n; else if(g==='A') hA+=n; else hB+=n;
+  });
+  const wS = totHead ? hS/totHead : 0;
+  const wA = totHead ? hA/totHead : 0;
+  const wB = totHead ? hB/totHead : 0;
+  const wSB = wS + wB;
+
+  // spread 배열: 상위2등급 양수, 나머지 보정
+  const upSum  = base[0]+base[1];
+  const loSum  = 1 - upSum;
+  const totalUp = upSum * str;   // S vs B 간 상위등급 총 차이폭
+
+  const spread = base.map((r,k) => {
+    if(k < 2)  return upSum  > 0 ? totalUp*(r/upSum)   :  0;
+    else       return loSum  > 0 ? -totalUp*(r/loSum)  :  0;
+  });
+
+  // 조직성과별 delta (wSB=0이면 모두 0)
+  const delta = g => {
+    if(g==='A' || wSB===0) return base.map(()=>0);
+    const fac = g==='S' ? wB/wSB : -wS/wSB;
+    return spread.map(s => s*fac);
+  };
+
+  // 조직별 조정 비율 (1명 조직은 절대평가 → null 마킹)
+  const adjRates = {};
+  depts.forEach(d => {
+    const n = d[roleKey];
+    if(n === 1) { adjRates[d.name] = null; return; }  // 절대평가
+    const g  = orgPerfMap[d.name] || 'A';
+    const dv = delta(g);
+    let r = base.map((v,k) => Math.max(0, v+dv[k]));
+    const s = r.reduce((a,b)=>a+b,0);
+    if(s>0) r=r.map(v=>v/s);
+    adjRates[d.name] = r;
+  });
+
+  // 대표 비율 (조직성과 S/A/B 각각 단일 조직 가정)
+  const repS = (() => { let r=base.map((v,k)=>Math.max(0,v+delta('S')[k])); const s=r.reduce((a,b)=>a+b,0); return s>0?r.map(v=>v/s):base; })();
+  const repB = (() => { let r=base.map((v,k)=>Math.max(0,v+delta('B')[k])); const s=r.reduce((a,b)=>a+b,0); return s>0?r.map(v=>v/s):base; })();
+
+  return { adjRates, base, repS, repB, wS, wA, wB, hS, hA, hB, totHead, absCount, spread };
+}
+
+// 최대잉여법 배분
+function apportion(n, rates) {
+  if(!n) return rates.map(()=>0);
+  const ideals = rates.map(r=>n*r);
+  const floors = ideals.map(Math.floor);
+  let rem = n - floors.reduce((a,b)=>a+b,0);
+  const sorted = ideals.map((v,i)=>({i, f:v-Math.floor(v)})).sort((a,b)=>b.f-a.f);
+  const res = [...floors];
+  sorted.forEach(x => { if(rem-->0) res[x.i]++; });
+  return res;
+}
+
+// ═══════════════════════════════════════════════════════════
+// 9. 시뮬레이션 실행
+// ═══════════════════════════════════════════════════════════
+function runSim() {
+  const fp  = ST.fp;
+  const opm = ST.orgPerf;
+
+  const mAdj = calcAdj(fp, opm, DEPTS, 'mgr');
+  const eAdj = calcAdj(fp, opm, DEPTS, 'mem');
+
+  const mRes={}, eRes={};
+  DEPTS.forEach(d => {
+    if(d.mgr) {
+      if(d.mgr === 1) mRes[d.name] = null;  // 절대평가
+      else mRes[d.name] = apportion(d.mgr, mAdj.adjRates[d.name]);
+    }
+    if(d.mem) {
+      if(d.mem === 1) eRes[d.name] = null;  // 절대평가
+      else eRes[d.name] = apportion(d.mem, eAdj.adjRates[d.name]);
+    }
+  });
+
+  ST.sim = { fp, mAdj, eAdj, mRes, eRes };
+
+  // 결과 영역 먼저 표시 (차트는 canvas 크기가 있어야 렌더링 가능)
+  const resultArea = document.getElementById('result-area');
+  resultArea.style.display = '';
+
+  try {
+    renderResult();
+  } catch(e) {
+    console.error('렌더링 오류:', e);
+    alert('결과 렌더링 중 오류가 발생했습니다: ' + e.message);
+    return;
+  }
+
+  resultArea.scrollIntoView({behavior:'smooth'});
+}
+
+// ═══════════════════════════════════════════════════════════
+// 10. 결과 렌더링
+// ═══════════════════════════════════════════════════════════
+function pct(v){ return (v*100).toFixed(1)+'%'; }
+function dPct(v){
+  const p = (v*100).toFixed(1);
+  if(v>0.001) return `<span class="pos">+${p}%p</span>`;
+  if(v<-0.001) return `<span class="neg">${p}%p</span>`;
+  return `<span class="neutral">0%p</span>`;
+}
+
+function renderResult() {
+  const {fp, mAdj, eAdj, mRes, eRes} = ST.sim;
+  const mult = ST.strengthMult[ST.strength];
+  const strLabel = {low:'약',mid:'보통',high:'강'}[ST.strength];
+
+  // 수렴 설명
+  document.getElementById('converge-desc').innerHTML = `
+    <strong>⚙ 자동 산출 원리</strong><br>
+    조직성과 <strong>A = 재무실적 목표 비율 (기준점)</strong>으로 설정하고,
+    S·B이하의 차등폭을 아래 공식으로 역산합니다.<br>
+    &nbsp;&nbsp;• <em>Δ(S) = (B이하 인원 비중 ÷ (S+B이하 비중)) × 차등강도</em><br>
+    &nbsp;&nbsp;• <em>Δ(B이하) = -(S 인원 비중 ÷ (S+B이하 비중)) × 차등강도</em><br>
+    이 구조로 전사 가중평균이 재무실적 목표 비율에 수렴합니다.
+    인원이 많은 조직이 S를 받을수록 S의 차등폭이 자동으로 줄어듭니다.<br>
+    현재 차등강도: <strong>${strLabel} (×${mult})</strong> &nbsp;|&nbsp; 재무실적: <strong>${fp}등급</strong>`;
+
+  // 차등 테이블
+  renderDiffTbl('diff-mgr', mAdj, 4, '5·6등급');
+  renderDiffTbl('diff-mem', eAdj, 5, '6등급');
+
+  // 가중치 정보
+  const mAbsOrgs = DEPTS.filter(d=>d.mgr===1).map(d=>d.name).join(', ');
+  const eAbsOrgs = DEPTS.filter(d=>d.mem===1).map(d=>d.name).join(', ');
+  document.getElementById('weight-info').innerHTML =
+    `[팀장급 기준] 조직성과 S: ${mAdj.hS}명 (${pct(mAdj.wS)}) &nbsp;|&nbsp; A: ${mAdj.hA}명 (${pct(mAdj.wA)}) &nbsp;|&nbsp; B이하: ${mAdj.hB}명 (${pct(mAdj.wB)}) &nbsp;|&nbsp; 상대평가 합계: ${mAdj.totHead}명${mAdj.absCount>0?' &nbsp;|&nbsp; <span style="color:#9c27b0">절대평가 제외: '+mAdj.absCount+'개 조직 ('+mAbsOrgs+')</span>':''}<br>
+     [팀원 기준] 조직성과 S: ${eAdj.hS}명 (${pct(eAdj.wS)}) &nbsp;|&nbsp; A: ${eAdj.hA}명 (${pct(eAdj.wA)}) &nbsp;|&nbsp; B이하: ${eAdj.hB}명 (${pct(eAdj.wB)}) &nbsp;|&nbsp; 상대평가 합계: ${eAdj.totHead}명${eAdj.absCount>0?' &nbsp;|&nbsp; <span style="color:#9c27b0">절대평가 제외: '+eAdj.absCount+'개 조직 ('+eAbsOrgs+')</span>':''}<br>
+     <em>※ 인원이 많은 조직이 S를 받을수록 S의 차등폭이 자동으로 축소되어 전사 평균이 목표에 수렴합니다.</em><br>
+     <em>※ 평가대상자 1명 조직은 <span style="color:#9c27b0;font-weight:700">절대평가대상자</span>로 분류되어 상대평가 비율 계산 및 T/O 배분에서 제외됩니다.</em>`;
+
+  // 요약 칩
+  const sN = DEPTS.filter(d=>ST.orgPerf[d.name]==='S').length;
+  const aN = DEPTS.filter(d=>ST.orgPerf[d.name]==='A').length;
+  const bN = DEPTS.filter(d=>ST.orgPerf[d.name]==='B').length;
+  const absM = DEPTS.filter(d=>d.mgr===1).length;
+  const absE = DEPTS.filter(d=>d.mem===1).length;
+  document.getElementById('summary-chips').innerHTML = `
+    <div class="s-chip">전체 본부<strong>${DEPTS.length}개</strong></div>
+    <div class="s-chip" style="background:#e3f2fd"><span style="color:#1565c0">조직성과 S</span><strong style="color:#1565c0">${sN}개</strong></div>
+    <div class="s-chip" style="background:#e8f5e9"><span style="color:#2e7d32">조직성과 A</span><strong style="color:#2e7d32">${aN}개</strong></div>
+    <div class="s-chip" style="background:#fff3e0"><span style="color:#bf360c">조직성과 B이하</span><strong style="color:#bf360c">${bN}개</strong></div>
+    <div class="s-chip">팀장 상대평가<strong>${mAdj.totHead}명</strong></div>
+    <div class="s-chip">팀원 상대평가<strong>${eAdj.totHead}명</strong></div>
+    ${absM>0?`<div class="s-chip" style="background:#f3e5f5"><span style="color:#9c27b0">절대평가(팀장)</span><strong style="color:#9c27b0">${absM}개 조직</strong></div>`:''}
+    ${absE>0?`<div class="s-chip" style="background:#f3e5f5"><span style="color:#9c27b0">절대평가(팀원)</span><strong style="color:#9c27b0">${absE}개 조직</strong></div>`:''}
+  `;
+
+  // 결과 테이블
+  renderResultTbl('tbl-mgr', mRes, mAdj, 'mgr', 4, '5·6등급');
+  renderResultTbl('tbl-mem', eRes, eAdj, 'mem', 5, '6등급');
+
+  // 차트
+  renderChart('chart-mgr', mAdj, 4);
+  renderChart('chart-mem', eAdj, 5);
+
+  // 강도별 비교
+  renderStrengthCompare();
+
+  // 본부 배포 체크리스트 & 교환 규칙 테이블
+  renderDeptChecklist();
+  renderExRuleTables();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 본부 배포 체크리스트
+// ═══════════════════════════════════════════════════════════
+function renderDeptChecklist() {
+  const box = document.getElementById('dept-checklist');
+  const cnt = document.getElementById('dept-sel-count');
+  if(!box) return;
+  box.innerHTML = DEPTS.map((d, i) => `
+    <label style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:5px;
+                  background:#fff;border:1px solid #e0e4ec;cursor:pointer;font-size:0.85em;">
+      <input type="checkbox" id="dchk-${i}" checked
+             onchange="updateDeptSelCount()">
+      ${d.name}
+    </label>`).join('');
+  updateDeptSelCount();
+}
+
+function updateDeptSelCount() {
+  const cnt = document.getElementById('dept-sel-count');
+  if(!cnt) return;
+  const checked = DEPTS.filter((_, i) => document.getElementById(`dchk-${i}`)?.checked).length;
+  cnt.textContent = checked;
+  if(document.getElementById('use-dept-override')?.checked) renderDeptOverrideTable();
+}
+
+function selectAllDepts(checked) {
+  DEPTS.forEach((_, i) => {
+    const cb = document.getElementById(`dchk-${i}`);
+    if(cb) cb.checked = checked;
+  });
+  updateDeptSelCount();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 강도별 비교 렌더링
+// ═══════════════════════════════════════════════════════════
+function renderStrengthCompare() {
+  const fp = ST.fp;
+  const opm = ST.orgPerf;
+  const origStrength = ST.strength;
+  const strengths = ['low', 'mid', 'high'];
+
+  // 세 강도 모두 결과 계산
+  const allRes = {};
+  strengths.forEach(str => {
+    ST.strength = str;
+    const mAdj = calcAdj(fp, opm, DEPTS, 'mgr');
+    const eAdj = calcAdj(fp, opm, DEPTS, 'mem');
+    const mRes = {}, eRes = {};
+    DEPTS.forEach(d => {
+      if(d.mgr) mRes[d.name] = d.mgr===1 ? null : apportion(d.mgr, mAdj.adjRates[d.name]);
+      if(d.mem) eRes[d.name] = d.mem===1 ? null : apportion(d.mem, eAdj.adjRates[d.name]);
+    });
+    allRes[str] = { mRes, eRes };
+  });
+  ST.strength = origStrength; // 원래 강도 복원
+
+  document.getElementById('compare-mgr').innerHTML = buildCmpTable('팀장급', allRes, 'mRes', 'mgr', 4);
+  document.getElementById('compare-mem').innerHTML = buildCmpTable('팀원',   allRes, 'eRes', 'mem', 5);
+}
+
+function buildCmpTable(title, allRes, resKey, roleKey, nG) {
+  const cur = ST.strength;
+  const strLabels = { low: '약', mid: '보통', high: '강' };
+  const strColors  = { low: '#2e7d32', mid: '#1565c0', high: '#b71c1c' };
+  const strengths  = ['low', 'mid', 'high'];
+
+  // 조직성과 S/B 조직 수 체크
+  const sOrBcount = DEPTS.filter(d => {
+    const n = d[roleKey]; if(!n || n===1) return false;
+    return ST.orgPerf[d.name] !== 'A';
+  }).length;
+
+  let h = `<div class="col-label" style="margin-bottom:10px">${title}</div>`;
+
+  // 안내 박스
+  if(sOrBcount === 0) {
+    h += `<div style="padding:10px 14px;background:#fff8e1;border-left:3px solid #ffa000;border-radius:0 6px 6px 0;font-size:0.83em;color:#555;margin-bottom:10px">
+      ⚠️ 현재 조직성과가 모두 <strong>A</strong>로 설정되어 있습니다.
+      조직성과 <strong>S</strong> 또는 <strong>B이하</strong> 조직이 있어야 강도에 따른 T/O 차이가 발생합니다.
+      위의 조직성과 드롭다운에서 일부 본부를 S 또는 B이하로 변경 후 시뮬레이션을 다시 실행해보세요.
+    </div>`;
+  } else {
+    h += `<div style="padding:8px 14px;background:#e8f5e9;border-left:3px solid #43a047;border-radius:0 6px 6px 0;font-size:0.82em;color:#2e7d32;margin-bottom:10px">
+      ✅ 비율(%) 기준으로 비교합니다. <strong style="color:#1565c0">파란 셀</strong>은 보통 대비 높음, <strong style="color:#c62828">빨간 셀</strong>은 낮음을 의미합니다. 조직성과 A는 강도와 무관하게 동일합니다.
+    </div>`;
+  }
+
+  // 범례
+  h += `<div class="cmp-legend">`;
+  strengths.forEach(str => {
+    const active = str === cur ? ' ★ 현재 선택' : '';
+    h += `<span style="background:${strColors[str]}18;color:${strColors[str]};border:1.5px solid ${strColors[str]}55">차등폭 ${strLabels[str]}${active}</span>`;
+  });
+  h += `</div>`;
+
+  h += `<div class="table-scroll"><table class="cmp-table"><thead>`;
+
+  // 헤더 행 1
+  h += `<tr>
+    <th rowspan="2" style="background:#eef1f8;min-width:110px">본부명</th>
+    <th rowspan="2" style="background:#eef1f8">조직성과</th>
+    <th rowspan="2" style="background:#eef1f8">인원</th>`;
+  strengths.forEach(str => {
+    const isCur = str === cur;
+    const border = isCur ? `outline:2px solid ${strColors[str]};outline-offset:-2px;` : '';
+    h += `<th colspan="${nG}" class="cmp-th-${str}" style="${border}">차등폭 ${strLabels[str]}${isCur ? ' ✓' : ''}</th>`;
+  });
+  h += `</tr><tr>`;
+  strengths.forEach(str => {
+    for(let k = 1; k <= nG; k++) {
+      h += `<th class="cmp-th-${str}" style="font-weight:600;font-size:0.85em">${k}등급</th>`;
+    }
+  });
+  h += `</tr></thead><tbody>`;
+
+  // 각 조직별 3강도의 비율(%) 미리 계산
+  const rateMap = {}; // rateMap[deptName][str][gradeIdx] = rate (0~1)
+  DEPTS.forEach(d => {
+    const n = d[roleKey]; if(!n) return;
+    rateMap[d.name] = {};
+    strengths.forEach(str => {
+      if(n === 1) { rateMap[d.name][str] = null; return; }
+      const res = allRes[str][resKey][d.name];
+      if(!res) { rateMap[d.name][str] = null; return; }
+      rateMap[d.name][str] = res.map(c => n > 0 ? c / n : 0);
+    });
+  });
+
+  // 데이터 행
+  DEPTS.forEach(d => {
+    const n = d[roleKey]; if(!n) return;
+    const g  = ST.orgPerf[d.name];
+    const gc = g === 'S' ? 'S' : g === 'A' ? 'A' : 'B';
+    const isA = g === 'A';
+
+    h += `<tr>
+      <td style="text-align:left;font-weight:600;padding-left:10px">${d.name}</td>
+      <td><span class="badge badge-${gc}">${g}${g==='B'?'이하':''}</span></td>
+      <td>${n}${n===1?'<span class="abs-badge">[절대]</span>':''}</td>`;
+
+    strengths.forEach(str => {
+      const isCur = str === cur;
+      const rateArr = rateMap[d.name]?.[str];
+      const midArr  = rateMap[d.name]?.['mid'];
+
+      if(!rateArr) {
+        for(let k = 0; k < nG; k++) {
+          h += `<td class="cmp-td-${str}" style="color:#9c27b0;font-size:0.82em">절대</td>`;
+        }
+        return;
+      }
+
+      rateArr.forEach((r, i) => {
+        const midR = midArr ? midArr[i] : r;
+        const diff = r - midR;
+        const pct = (r * 100).toFixed(1);
+        const cnt = allRes[str][resKey][d.name]?.[i] ?? '-';
+        // 색상: 보통 대비 ±0.5%p 이상이면 강조
+        let cellBg = '';
+        let diffTxt = '';
+        if(!isA && Math.abs(diff) >= 0.005) {
+          if(diff > 0) {
+            cellBg = `background:#e3f2fd;`;
+            diffTxt = `<span style="font-size:0.72em;color:#1565c0;display:block">▲${(diff*100).toFixed(1)}%p</span>`;
+          } else {
+            cellBg = `background:#ffebee;`;
+            diffTxt = `<span style="font-size:0.72em;color:#c62828;display:block">▼${(Math.abs(diff)*100).toFixed(1)}%p</span>`;
+          }
+        }
+        const fw = isCur ? 'font-weight:700;' : '';
+        h += `<td class="cmp-td-${str}" style="${cellBg}${fw}">${cnt}명<span class="pct-small">(${pct}%)</span>${diffTxt}</td>`;
+      });
+    });
+    h += `</tr>`;
+  });
+
+  // 합계 행 (비율 기준)
+  const tots = {};
+  strengths.forEach(str => {
+    tots[str] = { counts: new Array(nG).fill(0), rates: new Array(nG).fill(0), n: 0 };
+    DEPTS.forEach(d => {
+      const n = d[roleKey]; if(!n || n === 1) return;
+      const res = allRes[str][resKey][d.name]; if(!res) return;
+      res.forEach((c, i) => tots[str].counts[i] += c);
+      tots[str].n += n;
+    });
+    tots[str].rates = tots[str].counts.map(c => tots[str].n > 0 ? c / tots[str].n : 0);
+  });
+
+  h += `<tr style="font-weight:700;background:#e8eaf6">
+    <td style="text-align:left;padding-left:10px">합 계</td><td>-</td><td>${tots['mid'].n}</td>`;
+  strengths.forEach(str => {
+    tots[str].counts.forEach((t, i) => {
+      const r = tots[str].rates[i];
+      const midR = tots['mid'].rates[i];
+      const diff = r - midR;
+      let bg = '';
+      let diffTxt = '';
+      if(Math.abs(diff) >= 0.005) {
+        bg = diff > 0 ? 'background:#e3f2fd;' : 'background:#ffebee;';
+        const sign = diff > 0 ? '▲' : '▼';
+        const color = diff > 0 ? '#1565c0' : '#c62828';
+        diffTxt = `<span style="font-size:0.72em;color:${color};display:block">${sign}${(Math.abs(diff)*100).toFixed(1)}%p</span>`;
+      }
+      h += `<td class="cmp-td-${str}" style="${bg}">${t}명<span class="pct-small">(${(r*100).toFixed(1)}%)</span>${diffTxt}</td>`;
+    });
+  });
+  h += `</tr>`;
+
+  // 약 vs 강 최대 차이 행
+  h += `<tr style="background:#f9f9f9;font-size:0.82em;color:#666">
+    <td colspan="3" style="text-align:left;padding-left:10px;font-style:italic">약 ↔ 강 비율 차이</td>`;
+  strengths.forEach(str => {
+    tots[str].rates.forEach((r, i) => {
+      const lowR = tots['low'].rates[i];
+      const hiR  = tots['high'].rates[i];
+      const span = hiR - lowR;
+      if(str === 'mid') {
+        h += `<td class="cmp-td-mid" style="color:#555">${(span*100).toFixed(1)}%p 범위</td>`;
+      } else if(str === 'low') {
+        h += `<td class="cmp-td-low" style="color:#888">-</td>`;
+      } else {
+        h += `<td class="cmp-td-high" style="color:#888">-</td>`;
+      }
+    });
+  });
+  h += `</tr>`;
+
+  h += `</tbody></table></div>`;
+  return h;
+}
+
+function renderDiffTbl(containerId, adj, nG, absLabel) {
+  const {base, repS, repB} = adj;
+  let h = `<table class="diff-table"><thead><tr>
+    <th>등급</th>
+    <th style="color:#1565c0">조직성과 S</th>
+    <th style="color:#2e7d32">조직성과 A<br><small>(기준)</small></th>
+    <th style="color:#bf360c">조직성과 B이하</th>
+    <th>S vs A</th><th>B이하 vs A</th>
+  </tr></thead><tbody>`;
+  for(let k=0;k<nG;k++){
+    h+=`<tr>
+      <td><strong>${k+1}등급</strong></td>
+      <td style="color:#1565c0">${pct(repS[k])}</td>
+      <td style="color:#2e7d32">${pct(base[k])}</td>
+      <td style="color:#bf360c">${pct(repB[k])}</td>
+      <td>${dPct(repS[k]-base[k])}</td>
+      <td>${dPct(repB[k]-base[k])}</td>
+    </tr>`;
+  }
+  h+=`<tr><td>${absLabel}</td><td colspan="5" style="color:#bbb">절대 (제한없음)</td></tr>`;
+  h+='</tbody></table>';
+  document.getElementById(containerId).innerHTML = h;
+}
+
+function renderResultTbl(tableId, res, adj, roleKey, nG, absLabel) {
+  const tbl = document.getElementById(tableId);
+  // 헤더
+  let h = '<thead><tr><th>본부명</th><th>조직성과</th><th>인원</th>';
+  for(let k=1;k<=nG;k++) h+=`<th>${k}등급</th>`;
+  h+=`<th>${absLabel}</th></tr></thead>`;
+
+  // 합계 계산 (절대평가 1명 조직 제외)
+  const tots = new Array(nG).fill(0);
+  let totN = 0;
+  DEPTS.forEach(d => {
+    const n = d[roleKey]; if(!n || n===1 || !res[d.name]) return;
+    res[d.name].forEach((c,i) => tots[i]+=c);
+    totN += n;
+  });
+
+  // 바디
+  h += '<tbody>';
+  DEPTS.forEach(d => {
+    const n = d[roleKey]; if(!n) return;
+    const g  = ST.orgPerf[d.name];
+    const gc = g==='S'?'S':g==='A'?'A':'B';
+
+    if(n === 1) {
+      // 절대평가 대상자 (1명)
+      h+=`<tr style="background:#fdf6ff !important">
+        <td style="text-align:left;font-weight:600;padding-left:12px">${d.name}</td>
+        <td><span class="badge badge-${gc}">${g}${g==='B'?'이하':''}</span></td>
+        <td>${n}<span style="font-size:0.72em;color:#9c27b0;font-weight:700;margin-left:3px">[절대]</span></td>`;
+      for(let i=0;i<nG;i++) h+=`<td style="color:#9c27b0;font-size:0.85em">절대</td>`;
+      h+=`<td style="color:#9c27b0;font-weight:700;font-size:0.85em">절대평가</td></tr>`;
+      return;
+    }
+
+    const cs = res[d.name];
+    if(!cs) return;
+    h+=`<tr>
+      <td style="text-align:left;font-weight:600;padding-left:12px">${d.name}</td>
+      <td><span class="badge badge-${gc}">${g}${g==='B'?'이하':''}</span></td>
+      <td>${n}</td>`;
+    cs.forEach((c,i) => {
+      const p = n>0 ? (c/n*100).toFixed(0) : 0;
+      h+=`<td>${c}<span class="pct-small">(${p}%)</span></td>`;
+    });
+    h+=`<td class="abs-cell">-</td></tr>`;
+  });
+  h+='</tbody>';
+
+  // 합계 행
+  h+='<tfoot><tr><td style="text-align:left;padding-left:12px">합 계</td><td>-</td><td>'+totN+'</td>';
+  tots.forEach((t,i) => {
+    const ap = totN ? (t/totN*100).toFixed(1) : 0;
+    const bp = (adj.base[i]*100).toFixed(1);
+    h+=`<td>${t}<span class="pct-small">(${ap}%)</span></td>`;
+  });
+  h+=`<td class="abs-cell">-</td></tr>`;
+  // 목표 비율 행
+  h+='<tr class="target-row"><td style="text-align:left;padding-left:12px">재무실적 목표 비율</td><td>-</td><td>-</td>';
+  adj.base.slice(0,nG).forEach(r => {
+    h+=`<td><span style="color:#ff8f00;font-weight:700">${pct(r)}</span></td>`;
+  });
+  h+=`<td class="abs-cell">-</td></tr></tfoot>`;
+
+  tbl.innerHTML = h;
+}
+
+// SVG 차트 (외부 라이브러리 없이 직접 구현)
+function renderChart(divId, adj, nG) {
+  const container = document.getElementById(divId);
+  if (!container) return;
+
+  const {base, repS, repB, wS, wB} = adj;
+
+  const series = [
+    {label:'재무실적 목표', data:base.slice(0,nG), color:'#78909c', alpha:'bb'},
+  ];
+  if(wS>0) series.push({label:'조직성과 S',   data:repS.slice(0,nG), color:'#1565c0', alpha:'99'});
+  series.push(       {label:'조직성과 A',   data:base.slice(0,nG), color:'#2e7d32', alpha:'99'});
+  if(wB>0) series.push({label:'조직성과 B이하', data:repB.slice(0,nG), color:'#e65100', alpha:'99'});
+
+  const W=500, H=240, pL=44, pR=10, pT=14, pB=62;
+  const cW=W-pL-pR, cH=H-pT-pB, maxPct=50;
+  const nS=series.length;
+  const groupW=cW/nG;
+  const barW=Math.min(groupW*0.85/nS, 22);
+  const groupPad=(groupW - barW*nS)/2;
+
+  // Y 격자 & 레이블
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">`;
+  for(let i=0;i<=5;i++){
+    const v=i*10, y=pT+cH-cH*v/maxPct;
+    svg+=`<line x1="${pL}" y1="${y}" x2="${pL+cW}" y2="${y}" stroke="#e8e8e8" stroke-width="1"/>`;
+    svg+=`<text x="${pL-4}" y="${y+4}" text-anchor="end" font-size="11" fill="#aaa">${v}%</text>`;
+  }
+
+  // 막대
+  series.forEach((s,si)=>{
+    s.data.forEach((v,gi)=>{
+      const pctV=v*100;
+      const bH=Math.max(0, cH*pctV/maxPct);
+      const x=pL+gi*groupW+groupPad+si*barW;
+      const y=pT+cH-bH;
+      svg+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${bH.toFixed(1)}"
+              fill="${s.color}${s.alpha}" stroke="${s.color}" stroke-width="1.5" rx="2"/>`;
+      if(bH>18){
+        svg+=`<text x="${(x+barW/2).toFixed(1)}" y="${(y+bH/2+4).toFixed(1)}"
+                text-anchor="middle" font-size="10" fill="white" font-weight="700">${pctV.toFixed(0)}</text>`;
+      }
+    });
+  });
+
+  // X 축 레이블
+  for(let gi=0;gi<nG;gi++){
+    const x=pL+gi*groupW+groupW/2;
+    svg+=`<text x="${x}" y="${pT+cH+14}" text-anchor="middle" font-size="12" fill="#555">${gi+1}등급</text>`;
+  }
+
+  // 범례
+  let lx=pL, ly=pT+cH+34;
+  series.forEach(s=>{
+    const tw=s.label.length*7+24;
+    svg+=`<rect x="${lx}" y="${ly-10}" width="12" height="12" fill="${s.color}" rx="2"/>`;
+    svg+=`<text x="${lx+16}" y="${ly}" font-size="11" fill="#555">${s.label}</text>`;
+    lx+=tw;
+    if(lx>W-60){ lx=pL; ly+=16; }
+  });
+
+  svg+='</svg>';
+  container.innerHTML=svg;
+}
+
+// ═══════════════════════════════════════════════════════════
+// 11. Excel 내보내기 (SpreadsheetML — 외부 라이브러리 불필요)
+// ═══════════════════════════════════════════════════════════
+
+function xEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function xCell(val, type, sid){
+  const s = sid ? ` ss:StyleID="${sid}"` : '';
+  if(val===''||val===null||val===undefined) return `<Cell${s}><Data ss:Type="String"></Data></Cell>`;
+  const t = (type==='n' && typeof val==='number') ? 'Number' : 'String';
+  const v = t==='Number' ? val : xEsc(String(val));
+  return `<Cell${s}><Data ss:Type="${t}">${v}</Data></Cell>`;
+}
+
+function xRow(cells){ return '<Row>' + cells.join('') + '</Row>\n'; }
+function xBlank(){ return '<Row><Cell><Data ss:Type="String"></Data></Cell></Row>\n'; }
+
+function xSheet(name, rowsHtml){
+  return `<Worksheet ss:Name="${xEsc(name)}"><Table>\n${rowsHtml}</Table></Worksheet>\n`;
+}
+
+function buildResultSheet(name, fp, strLabel, res, adj, roleKey, nG, absLabel){
+  const hdrs = ['본부명','조직성과','인원'];
+  for(let k=1;k<=nG;k++) hdrs.push(k+'등급');
+  hdrs.push(absLabel,'합계');
+
+  // 합계 계산 (절대평가 1명 조직 제외)
+  const tots=new Array(nG).fill(0); let totN=0;
+  DEPTS.forEach(d=>{
+    const n=d[roleKey]; if(!n||n===1||!res[d.name]) return;
+    res[d.name].forEach((c,i)=>tots[i]+=c); totN+=n;
+  });
+
+  let rows='';
+  rows+=xRow([xCell(`${name} | 재무실적: ${fp}등급 | 차등폭 강도: ${strLabel}`,'s','ti')]);
+  rows+=xBlank();
+  rows+=xRow(hdrs.map(h=>xCell(h,'s','hd')));
+
+  DEPTS.forEach(d=>{
+    const n=d[roleKey]; if(!n) return;
+    const g=ST.orgPerf[d.name];
+    if(n===1||!res[d.name]) {
+      // 절대평가 대상자
+      rows+=xRow([
+        xCell(d.name), xCell(g+(g==='B'?'이하':'')), xCell(n,'n'),
+        ...new Array(nG).fill(null).map(()=>xCell('절대평가')),
+        xCell('절대평가'), xCell('-')
+      ]);
+    } else {
+      const cs=res[d.name];
+      rows+=xRow([
+        xCell(d.name), xCell(g+(g==='B'?'이하':'')), xCell(n,'n'),
+        ...cs.map(c=>xCell(c,'n')),
+        xCell(absLabel), xCell(cs.reduce((a,b)=>a+b,0),'n')
+      ]);
+    }
+  });
+
+  rows+=xRow([
+    xCell('합  계','s','tot'), xCell('-','s','tot'), xCell(totN,'n','tot'),
+    ...tots.map(t=>xCell(t,'n','tot')),
+    xCell('-','s','tot'), xCell(totN,'n','tot')
+  ]);
+  rows+=xRow([
+    xCell('재무실적 목표 비율','s','tgt'), xCell('-','s','tgt'), xCell('-','s','tgt'),
+    ...adj.base.slice(0,nG).map(r=>xCell((r*100).toFixed(1)+'%','s','tgt')),
+    xCell('-','s','tgt'), xCell('-','s','tgt')
+  ]);
+  rows+=xRow([
+    xCell('실제 전사 비율'), xCell('-'), xCell('-'),
+    ...tots.map((t,i)=>xCell(totN?(t/totN*100).toFixed(1)+'%':'0%')),
+    xCell('-'), xCell('-')
+  ]);
+
+  return xSheet(name, rows);
+}
+
+function buildDiffSheet(fp, strLabel, mAdj, eAdj){
+  let rows='';
+  rows+=xRow([xCell(`조직성과별 차등 비율 | 재무실적: ${fp}등급 | 차등폭 강도: ${strLabel}`,'s','ti')]);
+  rows+=xBlank();
+
+  const dHdr=['등급','조직성과 S','조직성과 A (기준)','조직성과 B이하','S vs A','B이하 vs A'];
+
+  rows+=xRow([xCell('■ 팀장급','s','hd2')]);
+  rows+=xRow(dHdr.map(h=>xCell(h,'s','hd')));
+  for(let k=0;k<4;k++){
+    rows+=xRow([
+      xCell((k+1)+'등급'),
+      xCell((mAdj.repS[k]*100).toFixed(1)+'%'),
+      xCell((mAdj.base[k]*100).toFixed(1)+'%'),
+      xCell((mAdj.repB[k]*100).toFixed(1)+'%'),
+      xCell(((mAdj.repS[k]-mAdj.base[k])*100).toFixed(1)+'%p'),
+      xCell(((mAdj.repB[k]-mAdj.base[k])*100).toFixed(1)+'%p'),
+    ]);
+  }
+  rows+=xRow([xCell('5·6등급'),xCell('절대'),xCell('절대'),xCell('절대'),xCell('-'),xCell('-')]);
+  rows+=xBlank();
+
+  rows+=xRow([xCell('■ 팀원','s','hd2')]);
+  rows+=xRow(dHdr.map(h=>xCell(h,'s','hd')));
+  for(let k=0;k<5;k++){
+    rows+=xRow([
+      xCell((k+1)+'등급'),
+      xCell((eAdj.repS[k]*100).toFixed(1)+'%'),
+      xCell((eAdj.base[k]*100).toFixed(1)+'%'),
+      xCell((eAdj.repB[k]*100).toFixed(1)+'%'),
+      xCell(((eAdj.repS[k]-eAdj.base[k])*100).toFixed(1)+'%p'),
+      xCell(((eAdj.repB[k]-eAdj.base[k])*100).toFixed(1)+'%p'),
+    ]);
+  }
+  rows+=xRow([xCell('6등급'),xCell('절대'),xCell('절대'),xCell('절대'),xCell('-'),xCell('-')]);
+  rows+=xBlank();
+
+  rows+=xRow([xCell('■ 인원 비중 (팀장급 기준)','s','hd2')]);
+  rows+=xRow(['조직성과','조직 수','인원','인원 비중'].map(h=>xCell(h,'s','hd')));
+  const gc = g => DEPTS.filter(d=>ST.orgPerf[d.name]===g).length;
+  rows+=xRow([xCell('S'),         xCell(gc('S'),'n'), xCell(mAdj.hS,'n'), xCell(pct(mAdj.wS))]);
+  rows+=xRow([xCell('A'),         xCell(gc('A'),'n'), xCell(mAdj.hA,'n'), xCell(pct(mAdj.wA))]);
+  rows+=xRow([xCell('B이하'),     xCell(gc('B'),'n'), xCell(mAdj.hB,'n'), xCell(pct(mAdj.wB))]);
+  rows+=xRow([xCell('합계','s','tot'), xCell(DEPTS.length,'n','tot'), xCell(mAdj.totHead,'n','tot'), xCell('100%','s','tot')]);
+
+  return xSheet('차등폭 정보', rows);
+}
+
+function buildSettingSheet(fp, strLabel){
+  let rows='';
+  rows+=xRow([xCell('평가등급 T/O 배분 시뮬레이터 — 시뮬레이터 설정','s','ti')]);
+  rows+=xRow([xCell('생성일시'), xCell(new Date().toLocaleString('ko-KR'))]);
+  rows+=xBlank();
+  rows+=xRow([xCell('재무실적','s','hd'), xCell(fp+'등급')]);
+  rows+=xRow([xCell('차등폭 강도','s','hd'), xCell(strLabel)]);
+  rows+=xBlank();
+  rows+=xRow(['#','본부명','조직성과','팀장 인원','팀원 인원'].map(h=>xCell(h,'s','hd')));
+  DEPTS.forEach((d,i)=>{
+    const g=ST.orgPerf[d.name];
+    rows+=xRow([xCell(i+1,'n'), xCell(d.name), xCell(g+(g==='B'?'이하':'')), xCell(d.mgr,'n'), xCell(d.mem,'n')]);
+  });
+  return xSheet('시뮬레이터 설정', rows);
+}
+
+async function doExport() {
+  if(!ST.sim){ alert('먼저 시뮬레이션을 실행해주세요.'); return; }
+  if(location.protocol === 'file:') {
+    alert('⚠️ "시뮬레이터_실행.bat" 을 더블클릭해서 실행해주세요.\n그 후 자동으로 열리는 브라우저에서 내보내기하세요.');
+    return;
+  }
+
+  const {fp, mAdj, eAdj, mRes, eRes} = ST.sim;
+
+  // Python 서버(server.py)에 데이터 POST → .xlsx 파일 수신
+  const payload = {
+    fp,
+    strength: ST.strength,
+    depts: DEPTS,
+    orgPerf: ST.orgPerf,
+    mRes: Object.fromEntries(DEPTS.map(d=>[d.name, mRes[d.name]?[...mRes[d.name]]:null])),
+    eRes: Object.fromEntries(DEPTS.map(d=>[d.name, eRes[d.name]?[...eRes[d.name]]:null])),
+    diff: {
+      mgr: { repS:[...mAdj.repS], base:[...mAdj.base], repB:[...mAdj.repB] },
+      mem: { repS:[...eAdj.repS], base:[...eAdj.base], repB:[...eAdj.repB] }
+    }
+  };
+
+  try {
+    const resp = await fetch('/export', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!resp.ok) {
+      const msg = await resp.text();
+      alert('서버 오류:\n' + msg); return;
+    }
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `TO배분시뮬레이터_${fp}등급_${dateStr}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+    alert('✅ Excel 파일 다운로드 완료!\n브라우저 다운로드 폴더를 확인해주세요.');
+  } catch(err) {
+    alert('연결 오류: ' + err.message + '\n\n시뮬레이터_실행.bat이 실행 중인지 확인해주세요.');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 본부 배포 — 교환 규칙 정의 & 상태
+// ═══════════════════════════════════════════════════════════
+// 가능한 교환 쌍 (0-based index, top < bot, 인접 상쇄 제외)
+const EX_DEFS = {
+  mgr: [              // 팀장급 상대평가 등급 4개 (idx 0~3)
+    { top:0, bot:3 }, // 1등급 ↔ 4등급
+    { top:0, bot:2 }, // 1등급 ↔ 3등급
+    { top:1, bot:3 }, // 2등급 ↔ 4등급
+  ],
+  mem: [              // 팀원 상대평가 등급 5개 (idx 0~4)
+    { top:0, bot:4 }, // 1등급 ↔ 5등급
+    { top:0, bot:3 }, // 1등급 ↔ 4등급
+    { top:0, bot:2 }, // 1등급 ↔ 3등급
+    { top:1, bot:4 }, // 2등급 ↔ 5등급
+    { top:1, bot:3 }, // 2등급 ↔ 4등급
+    { top:2, bot:4 }, // 3등급 ↔ 5등급
+  ]
+};
+// 각 규칙의 활성 여부·최대 횟수 상태
+const EX_STATE = {
+  mgr: EX_DEFS.mgr.map((_, i) => ({ enabled: i===0, max: 2 })),
+  mem: EX_DEFS.mem.map((_, i) => ({ enabled: i===0, max: 2 }))
+};
+// 본부별 최대 횟수 오버라이드: { '본부명': { mgr: {ruleIdx: max}, mem: {ruleIdx: max} } }
+const DEPT_EX_OVERRIDE = {};
+
+// 교환 1회의 등급별 효과 배열 반환 (nG 길이)
+function getExEffect(top, bot, nG) {
+  const e = new Array(nG).fill(0);
+  e[top]   -= 1; e[top+1] += 1;
+  e[bot]   -= 1; e[bot-1] += 1;
+  return e;
+}
+
+// 효과 문자열 (예: "1등급 -N / 2등급 +2N / 3등급 -N")
+function effectLabel(top, bot, nG) {
+  return getExEffect(top, bot, nG).map((v, i) => {
+    if(v===0) return null;
+    const abs = Math.abs(v);
+    return `${i+1}등급 ${v>0?'+':''}${abs===1?'N':'2N'}`;
+  }).filter(Boolean).join(' / ');
+}
+
+// 교환 규칙 테이블 렌더
+function renderExRuleTables() {
+  ['mgr','mem'].forEach(role => {
+    const nG = role==='mgr' ? 4 : 5;
+    const tbody = document.getElementById(`ex-tbody-${role}`);
+    if(!tbody) return;
+    tbody.innerHTML = EX_DEFS[role].map((def, i) => {
+      const st = EX_STATE[role][i];
+      const lbl = `${def.top+1}등급 ↔ ${def.bot+1}등급`;
+      const eff = effectLabel(def.top, def.bot, nG);
+      return `<tr>
+        <td><input type="checkbox" ${st.enabled?'checked':''} style="cursor:pointer;width:14px;height:14px;"
+          onchange="toggleExRule('${role}',${i},this.checked)"></td>
+        <td style="font-weight:700;white-space:nowrap;">${lbl}</td>
+        <td style="color:#555;font-size:0.92em;">${eff}</td>
+        <td style="white-space:nowrap;">
+          <input type="number" value="${st.max}" min="0" max="20"
+            style="width:40px;padding:3px 4px;border:1.5px solid #ccc;border-radius:4px;text-align:center;font-weight:700;"
+            ${!st.enabled?'disabled':''} onchange="updateExMax('${role}',${i},+this.value)">회
+        </td>
+      </tr>`;
+    }).join('');
+  });
+}
+
+function toggleExRule(role, idx, checked) {
+  EX_STATE[role][idx].enabled = checked;
+  renderExRuleTables();
+  if(document.getElementById('use-dept-override')?.checked) renderDeptOverrideTable();
+}
+
+function updateExMax(role, idx, val) {
+  EX_STATE[role][idx].max = Math.max(0, val||0);
+  if(document.getElementById('use-dept-override')?.checked) renderDeptOverrideTable();
+}
+
+// 본부별 개별 설정 테이블
+function renderDeptOverrideTable() {
+  const area = document.getElementById('dept-override-table');
+  if(!area) return;
+  const activeM = EX_DEFS.mgr.filter((_,i)=>EX_STATE.mgr[i].enabled);
+  const activeE = EX_DEFS.mem.filter((_,i)=>EX_STATE.mem[i].enabled);
+  const mIdx = EX_DEFS.mgr.map((_,i)=>i).filter(i=>EX_STATE.mgr[i].enabled);
+  const eIdx = EX_DEFS.mem.map((_,i)=>i).filter(i=>EX_STATE.mem[i].enabled);
+  if(!activeM.length && !activeE.length){
+    area.innerHTML='<p style="color:#aaa;font-size:0.83em;">활성화된 교환 규칙이 없습니다.</p>'; return;
+  }
+  let h = `<div class="table-scroll"><table style="border-collapse:collapse;font-size:0.8em;white-space:nowrap;">
+    <thead><tr>
+      <th style="background:#eef1f8;padding:6px 10px;border:1px solid #dde2ee;text-align:left;">본부명</th>`;
+  mIdx.forEach(i=>{ h+=`<th style="background:#e3f2fd;padding:6px 8px;border:1px solid #dde2ee;text-align:center;">팀장<br>${EX_DEFS.mgr[i].top+1}↔${EX_DEFS.mgr[i].bot+1}</th>`; });
+  eIdx.forEach(i=>{ h+=`<th style="background:#e8f5e9;padding:6px 8px;border:1px solid #dde2ee;text-align:center;">팀원<br>${EX_DEFS.mem[i].top+1}↔${EX_DEFS.mem[i].bot+1}</th>`; });
+  h += `</tr></thead><tbody>`;
+  DEPTS.forEach((dept, di) => {
+    if(!document.getElementById(`dchk-${di}`)?.checked) return;
+    h += `<tr><td style="padding:5px 10px;border:1px solid #e4e8f0;font-weight:600;">${dept.name}</td>`;
+    mIdx.forEach(i => {
+      const ov = DEPT_EX_OVERRIDE[dept.name]?.mgr?.[i];
+      const val = ov!==undefined ? ov : EX_STATE.mgr[i].max;
+      h += `<td style="padding:4px 6px;border:1px solid #e4e8f0;background:#f0f7fd;text-align:center;">
+        <input type="number" value="${val}" min="0" max="20"
+          style="width:40px;text-align:center;border:1.5px solid #90caf9;border-radius:4px;padding:2px 3px;font-size:0.92em;"
+          onchange="setDeptOverride('${dept.name}','mgr',${i},+this.value)"></td>`;
+    });
+    eIdx.forEach(i => {
+      const ov = DEPT_EX_OVERRIDE[dept.name]?.mem?.[i];
+      const val = ov!==undefined ? ov : EX_STATE.mem[i].max;
+      h += `<td style="padding:4px 6px;border:1px solid #e4e8f0;background:#f1f8f2;text-align:center;">
+        <input type="number" value="${val}" min="0" max="20"
+          style="width:40px;text-align:center;border:1.5px solid #a5d6a7;border-radius:4px;padding:2px 3px;font-size:0.92em;"
+          onchange="setDeptOverride('${dept.name}','mem',${i},+this.value)"></td>`;
+    });
+    h += `</tr>`;
+  });
+  h += `</tbody></table></div>`;
+  area.innerHTML = h;
+}
+
+function setDeptOverride(deptName, role, idx, val) {
+  if(!DEPT_EX_OVERRIDE[deptName]) DEPT_EX_OVERRIDE[deptName] = {mgr:{}, mem:{}};
+  DEPT_EX_OVERRIDE[deptName][role][idx] = val;
+}
+
+function toggleDeptOverrides() {
+  const checked = document.getElementById('use-dept-override')?.checked;
+  const area = document.getElementById('dept-override-area');
+  if(area) { area.style.display = checked ? '' : 'none'; if(checked) renderDeptOverrideTable(); }
+}
+
+// payload용 교환 규칙 추출
+function getExRulesPayload(selectedDepts) {
+  const rules = { mgr:[], mem:[] };
+  ['mgr','mem'].forEach(role => {
+    EX_DEFS[role].forEach((def, i) => {
+      if(!EX_STATE[role][i].enabled) return;
+      const globalMax = EX_STATE[role][i].max;
+      const deptMaxMap = {};
+      selectedDepts.forEach(d => {
+        const ov = DEPT_EX_OVERRIDE[d.name]?.[role]?.[i];
+        if(ov !== undefined) deptMaxMap[d.name] = ov;
+      });
+      rules[role].push({ top:def.top, bot:def.bot, globalMax, deptMaxMap });
+    });
+  });
+  return rules;
+}
+
+async function exportDepts() {
+  if(!ST.sim){ alert('먼저 시뮬레이션을 실행하세요.'); return; }
+  const selectedDepts = DEPTS.filter((d, i) => {
+    const cb = document.getElementById(`dchk-${i}`);
+    return cb && cb.checked;
+  });
+  if(!selectedDepts.length) { alert('다운로드할 본부를 선택하세요.'); return; }
+
+  const {mRes, eRes} = ST.sim;
+  const exRules = getExRulesPayload(selectedDepts);
+  const payload = {
+    fp:       ST.fp,
+    strength: ST.strength,
+    depts:    selectedDepts,
+    orgPerf:  ST.orgPerf,
+    mRes:     Object.fromEntries(selectedDepts.map(d=>[d.name, mRes[d.name]?[...mRes[d.name]]:null])),
+    eRes:     Object.fromEntries(selectedDepts.map(d=>[d.name, eRes[d.name]?[...eRes[d.name]]:null])),
+    exRules,
+    date: new Date().toISOString().slice(0,10).replace(/-/g,'')
+  };
+
+  const btn = document.getElementById('btn-dept-export');
+  btn.disabled = true; btn.textContent = '생성 중...';
+  try {
+    const res = await fetch('http://localhost:8765/export-depts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) { const t = await res.text(); alert('오류: '+t); return; }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `본부배포_${ST.fp}등급_${payload.date}.zip`;
+    a.click(); URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('서버 연결 실패: ' + e.message + '\nserver.py가 실행 중인지 확인하세요.');
+  } finally {
+    btn.disabled = false; btn.textContent = '본부 파일 다운로드';
+  }
+}
+
+// 페이지 로드 시 초기화
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body></html>
